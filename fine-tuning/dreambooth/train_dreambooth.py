@@ -104,7 +104,21 @@ def quick_upload_s3(s3_output):
     if job_name is None:
         job_name=str(uuid.uuid4())
         
+    repo_url = "https://github.com/swayam1998/StableDiffusionInferenceScript.git"
     tar_dir = '/opt/ml/model/'
+    # Clone the repository to the current directory and copy code directory to models folder
+    working_dir = os.getcwd()
+    print(working_dir)
+    subprocess.run(f"git clone {repo_url}", shell=True)
+    # Source directory
+    print(os.listdir('./'))
+    src_dir = f"{working_dir}/StableDiffusionInferenceScript/"
+    # Destination directory
+    dst_dir = tar_dir
+    # Copy the entire directory and its contents to the destination directory
+    shutil.copytree(src_dir, dst_dir, dirs_exist_ok = True)
+    print(os.listdir(tar_dir))
+    
     #create model.tar.gz
     output_file = 'model.tar.gz'
     
