@@ -15,4 +15,5 @@ COPY ./sd_code/ /opt/ml/code/
 COPY train.sh /opt/ml/code/
 COPY train_dreambooth.py /opt/ml/code/
 
-
+COPY inference.py /opt/ml/model/code/
+COPY requirements.txt /opt/ml/model/code/

@@ -4,6 +4,8 @@ import itertools
 import logging
 import math
 import os
+import tarfile
+import shutil
 import random
 import time
 import traceback
@@ -89,7 +91,7 @@ def inference_samples(prompt):
         count=count+1
         
 
-def quick_upload_s3(models_path):
+def quick_upload_s3(s3_output):
     print('begin quick upload s3 , skip tgz')
     account_id = boto3.client('sts').get_caller_identity().get('Account')
     region_name= os.environ.get('region',None)
@@ -101,8 +103,21 @@ def quick_upload_s3(models_path):
     job_name = sm_env.get('job_name',None) 
     if job_name is None:
         job_name=str(uuid.uuid4())
-    upload_path=f's3://sagemaker-{region_name}-{account_id}/dreambooth/model/{job_name}/'
-    command = f"/opt/conda/bin/s5cmd sync /opt/ml/model/ {upload_path}"
+        
+    tar_dir = '/opt/ml/model/'
+    #create model.tar.gz
+    output_file = 'model.tar.gz'
+    
+    parent_dir=os.getcwd()
+    os.chdir(tar_dir)
+    with tarfile.open(output_file, "w:gz") as tar:
+        for item in os.listdir('.'):
+            print(item)
+            tar.add(item, arcname=item)
+    os.chdir(parent_dir)
+    
+    upload_path= s3_output if s3_output else f's3://sagemaker-{region_name}-{account_id}/dreambooth/model/{job_name}/'
+    command = f"/opt/conda/bin/s5cmd sync /opt/ml/model/ {upload_path}/{job_name}/"
     subprocess.run(command, shell=True)
     print(f"begain s3 copy ,cmd: {command}")
     command = f"rm -rf /opt/ml/model/*"
@@ -168,6 +183,13 @@ def parse_args(input_args=None):
             default=None,
             required=True,
             help="name of trained model.",
+    )
+    parser.add_argument(
+            "--s3_output",
+            type=str,
+            default=None,
+            required=True,
+            help="S3 Output location of trained model.",
     )
     parser.add_argument(
         "--models_path",
@@ -528,6 +550,7 @@ def main(args, memory_record, use_subdir, lora_model=None, lora_alpha=1.0, lora_
     max_train_steps = args.max_train_steps
     logging_dir = Path('/opt/ml/model/', "logging")
     args.max_token_length = int(args.max_token_length)
+    
     if not args.pad_tokens and args.max_token_length > 75:
         print("Cannot raise token length limit above 75 when pad_tokens=False")
 
@@ -1298,6 +1321,6 @@ def main(args, memory_record, use_subdir, lora_model=None, lora_alpha=1.0, lora_
 if __name__ == '__main__':
     args=parse_args(None)
     main(args=args, memory_record={}, use_subdir=False, lora_model=None, lora_alpha=1.0, lora_txt_alpha=1.0, custom_model_name="")
-    inference_samples(args.instance_prompt)
-    quick_upload_s3(args.models_path)
+    # inference_samples(args.instance_prompt)
+    quick_upload_s3(args.s3_output)
     
