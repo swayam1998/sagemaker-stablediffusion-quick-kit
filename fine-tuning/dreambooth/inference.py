@@ -27,7 +27,7 @@ def model_fn(model_dir):
 
 def predict_fn(data, pipe):
     # get prompt & parameters
-    prompt = data.pop("prompt", data)
+    prompt = data.pop("inputs", data)
     # set valid HP for stable diffusion
     height = data.pop("height", 512)
     width = data.pop("width", 512)
@@ -50,7 +50,7 @@ def predict_fn(data, pipe):
     
     # run generation with parameters
     generated_images = pipe(
-        prompt=prompt,
+        prompt,
         negative_prompt=negative_prompt,
         height=height,
         width=width,
