@@ -91,7 +91,7 @@ def inference_samples(prompt):
         count=count+1
         
 
-def quick_upload_s3(s3_output):
+def quick_upload_s3(s3_output, pretrained_model_name):
     print('begin quick upload s3 , skip tgz')
     account_id = boto3.client('sts').get_caller_identity().get('Account')
     region_name= os.environ.get('region',None)
@@ -130,7 +130,7 @@ def quick_upload_s3(s3_output):
             tar.add(item, arcname=item)
     os.chdir(parent_dir)
     
-    upload_path= s3_output if s3_output else f's3://sagemaker-{region_name}-{account_id}/dreambooth/model/{job_name}/'
+    upload_path= s3_output if s3_output else f's3://sagemaker-{region_name}-{account_id}/dreambooth/model/{job_name}/{pretrained_model_name}'
     command = f"/opt/conda/bin/s5cmd sync /opt/ml/model/ {upload_path}/{job_name}/"
     subprocess.run(command, shell=True)
     print(f"begain s3 copy ,cmd: {command}")
@@ -355,7 +355,7 @@ def parse_args(input_args=None):
             default=0,
             help="running number of training steps to perform.",
         )
-    parser.add_argument("--save_steps", type=int, default=500, help="Save checkpoint every X updates steps.")
+    parser.add_argument("--save_steps", type=int, default=100, help="Save checkpoint every X updates steps.")
     parser.add_argument(
         "--gradient_accumulation_steps",
         type=int,
@@ -454,7 +454,7 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--half_model",
         type=bool,
-        default=False,
+        default=True,
         help="Generate half-precision checkpoints (Saves space, minor difference in output)",
     )
     parser.add_argument(
@@ -1086,10 +1086,10 @@ def main(args, memory_record, use_subdir, lora_model=None, lora_alpha=1.0, lora_
                             
                             
 
-                            #compile_checkpoint('/opt/ml/model/',args.models_path,None,args.model_name, half=args.half_model, use_subdir=use_subdir,
-                            #                   reload_models=False, lora_path=out_file, log=False,
-                            #                   custom_model_name=custom_model_name
-                            #                   )
+                            compile_checkpoint('/opt/ml/model/',args.models_path,None,args.model_name, half=args.half_model, use_subdir=use_subdir,
+                                              reload_models=False, lora_path=out_file, log=False,
+                                              custom_model_name=custom_model_name
+                                              )
                         if args.use_ema:
                             ema_unet.restore(unet.parameters())
 
@@ -1336,5 +1336,5 @@ if __name__ == '__main__':
     args=parse_args(None)
     main(args=args, memory_record={}, use_subdir=False, lora_model=None, lora_alpha=1.0, lora_txt_alpha=1.0, custom_model_name="")
     # inference_samples(args.instance_prompt)
-    quick_upload_s3(args.s3_output)
+    quick_upload_s3(args.s3_output, args.pretrained_model_name_or_path)
     
